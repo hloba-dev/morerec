@@ -34,14 +34,8 @@ export interface Strings {
   perThese: string;
   notice: (n: number) => string;
   totalNote: string;
-  // дополнительные строки для интерфейса истории
-  savedTitle: string;
-  savedEmpty: string;
-  deleteConfirm: string;
-  deleteBtn: string;
   cancel: string;
   confirm: string;
-  saving: string;
 }
 
 export const I18N: Record<Lang, Strings> = {
@@ -82,13 +76,8 @@ export const I18N: Record<Lang, Strings> = {
         'квитанций',
       )}. Спасибо за понимание`,
     totalNote: 'Итого :',
-    savedTitle: 'Сохранённые реквизиты',
-    savedEmpty: 'Пока ничего не сохранено',
-    deleteConfirm: 'Удалить эту запись?',
-    deleteBtn: 'Удалить',
     cancel: 'Отмена',
     confirm: 'Подтвердить',
-    saving: 'Сохранение…',
   },
   en: {
     section: (idx) => `Payment ${idx}`,
@@ -121,12 +110,7 @@ export const I18N: Record<Lang, Strings> = {
         n === 1 ? 'receipt' : 'receipts'
       }. Thank you.`,
     totalNote: 'Total (not for client):',
-    savedTitle: 'Saved details',
-    savedEmpty: 'Nothing saved yet',
-    deleteConfirm: 'Delete this record?',
-    deleteBtn: 'Delete',
     cancel: 'Cancel',
     confirm: 'Confirm',
-    saving: 'Saving…',
   },
 };

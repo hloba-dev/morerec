@@ -4,9 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { BANKS } from '@/lib/banks';
 import { I18N, Lang } from '@/lib/i18n';
 import { generate, FieldError } from '@/lib/generate';
-import { Method, PaymentInput, SavedRecord } from '@/lib/types';
+import { Method, PaymentInput } from '@/lib/types';
 import Modal from './Modal';
-import SavedRecords from './SavedRecords';
 
 const PAYMENTS_COUNT = 4;
 
@@ -21,11 +20,6 @@ function makeEmpty(): PaymentInput[] {
   return Array.from({ length: PAYMENTS_COUNT }, () => ({ ...EMPTY_PAYMENT }));
 }
 
-type ConfirmAction =
-  | { type: 'clear' }
-  | { type: 'delete'; id: string }
-  | null;
-
 export default function PaymentForm() {
   const [lang, setLang] = useState<Lang>('ru');
   const [payments, setPayments] = useState<PaymentInput[]>(makeEmpty);
@@ -33,30 +27,11 @@ export default function PaymentForm() {
   const [globalError, setGlobalError] = useState<string>('');
   const [genText, setGenText] = useState<string | null>(null);
   const [genTotal, setGenTotal] = useState<number>(0);
-  const [genItems, setGenItems] = useState<PaymentInput[]>([]);
 
-  const [records, setRecords] = useState<SavedRecord[]>([]);
-  const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [confirmClear, setConfirmClear] = useState(false);
   const [toast, setToast] = useState<string>('');
-  const [saving, setSaving] = useState(false);
 
   const t = I18N[lang];
-
-  // --- Загрузка истории из MongoDB ---
-  const loadRecords = useCallback(async () => {
-    try {
-      const res = await fetch('/api/records');
-      if (!res.ok) return;
-      const data = await res.json();
-      setRecords(data.records ?? []);
-    } catch {
-      /* офлайн — просто не показываем историю */
-    }
-  }, []);
-
-  useEffect(() => {
-    loadRecords();
-  }, [loadRecords]);
 
   // --- Тост-уведомление ---
   const showToast = useCallback((msg: string) => {
@@ -91,13 +66,11 @@ export default function PaymentForm() {
     setErrors(result.errors);
     if (Object.keys(result.errors).length > 0 || result.text === null) {
       setGenText(null);
-      setGenItems([]);
       setGenTotal(0);
       return;
     }
     setGenText(result.text);
     setGenTotal(result.total);
-    setGenItems(result.items);
   }, [payments, lang]);
 
   // Перегенерация при смене языка, если текст уже показан или есть ошибки.
@@ -114,11 +87,10 @@ export default function PaymentForm() {
     setErrors({});
     setGlobalError('');
     setGenText(null);
-    setGenItems([]);
     setGenTotal(0);
   }, []);
 
-  // --- Копирование с сохранением в Mongo ---
+  // --- Копирование в буфер ---
   const copyTextToClipboard = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -144,75 +116,9 @@ export default function PaymentForm() {
     if (!genText) return;
     await copyTextToClipboard(genText);
     showToast(t.copied);
-
-    // Сохраняем скопированные реквизиты в MongoDB.
-    setSaving(true);
-    try {
-      const res = await fetch('/api/records', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: genText,
-          total: genTotal,
-          lang,
-          payments: genItems,
-        }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.record) {
-          setRecords((prev) => [data.record, ...prev]);
-        }
-      }
-    } catch {
-      /* не удалось сохранить — текст всё равно скопирован */
-    } finally {
-      setSaving(false);
-    }
-
-    // После копирования и записи в историю — очищаем форму.
+    // После копирования — очищаем форму.
     doClear();
-  }, [
-    genText,
-    genTotal,
-    genItems,
-    lang,
-    copyTextToClipboard,
-    showToast,
-    t,
-    doClear,
-  ]);
-
-  // Копирование из истории (без повторного сохранения).
-  const handleCopySaved = useCallback(
-    async (text: string) => {
-      await copyTextToClipboard(text);
-      showToast(t.copied);
-    },
-    [copyTextToClipboard, showToast, t],
-  );
-
-  // --- Удаление записи из Mongo ---
-  const doDelete = useCallback(
-    async (id: string) => {
-      try {
-        const res = await fetch(`/api/records/${id}`, { method: 'DELETE' });
-        if (res.ok) {
-          setRecords((prev) => prev.filter((r) => r._id !== id));
-        }
-      } catch {
-        /* ignore */
-      }
-    },
-    [],
-  );
-
-  const handleConfirm = useCallback(() => {
-    if (!confirmAction) return;
-    if (confirmAction.type === 'clear') doClear();
-    else if (confirmAction.type === 'delete') doDelete(confirmAction.id);
-    setConfirmAction(null);
-  }, [confirmAction, doClear, doDelete]);
+  }, [genText, copyTextToClipboard, showToast, t, doClear]);
 
   // --- Переключение языка ---
   const toggleLang = useCallback(() => {
@@ -234,10 +140,7 @@ export default function PaymentForm() {
         {payments.map((p, idx) => {
           const err = errors[idx];
           return (
-            <div
-              className={`section${err ? ' has-error' : ''}`}
-              key={idx}
-            >
+            <div className={`section${err ? ' has-error' : ''}`} key={idx}>
               <div className="section-title">
                 <span className="label">{t.section(idx + 1)}</span>
                 {err && <span className="section-error">{err.message}</span>}
@@ -301,7 +204,7 @@ export default function PaymentForm() {
           <button
             type="button"
             className="action secondary"
-            onClick={() => setConfirmAction({ type: 'clear' })}
+            onClick={() => setConfirmClear(true)}
           >
             {t.clear}
           </button>
@@ -316,11 +219,10 @@ export default function PaymentForm() {
             <div className="copy-line">
               <button
                 type="button"
-                className={`copy-button${saving ? ' saving' : ''}`}
+                className="copy-button"
                 onClick={handleCopyGenerated}
-                disabled={saving}
               >
-                {saving ? t.saving : t.copy}
+                {t.copy}
               </button>
               {genTotal > 0 && (
                 <span className="sum-note">
@@ -332,25 +234,16 @@ export default function PaymentForm() {
         )}
       </div>
 
-      <SavedRecords
-        records={records}
-        t={t}
-        lang={lang}
-        onRequestDelete={(id) => setConfirmAction({ type: 'delete', id })}
-        onCopy={handleCopySaved}
-      />
-
-      {confirmAction && (
+      {confirmClear && (
         <Modal
-          text={
-            confirmAction.type === 'clear' ? t.clearConfirm : t.deleteConfirm
-          }
-          confirmLabel={
-            confirmAction.type === 'clear' ? t.confirm : t.deleteBtn
-          }
+          text={t.clearConfirm}
+          confirmLabel={t.confirm}
           cancelLabel={t.cancel}
-          onConfirm={handleConfirm}
-          onCancel={() => setConfirmAction(null)}
+          onConfirm={() => {
+            doClear();
+            setConfirmClear(false);
+          }}
+          onCancel={() => setConfirmClear(false)}
         />
       )}
 

@@ -262,13 +262,35 @@ button {
 .saved {
   margin-top: 26px;
 }
+.saved-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
 .saved-title {
   font-size: 15px;
   font-weight: 700;
-  margin: 0 0 10px;
+  margin: 0;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.clear-history {
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--danger);
+  background: #fff;
+  color: var(--danger);
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-appearance: none;
+  white-space: nowrap;
+}
+.clear-history:active {
+  background: #ffecec;
 }
 .saved-count {
   font-size: 12px;
