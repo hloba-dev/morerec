@@ -5,6 +5,7 @@ import { BANKS } from '@/lib/banks';
 import { I18N, Lang } from '@/lib/i18n';
 import { generate, FieldError } from '@/lib/generate';
 import { Method, PaymentInput } from '@/lib/types';
+import { normalizePasted } from '@/lib/paste';
 import Modal from './Modal';
 
 const PAYMENTS_COUNT = 4;
@@ -112,6 +113,32 @@ export default function PaymentForm() {
     }
   }, []);
 
+  // --- Вставка из буфера в поле номера конкретного платежа ---
+  const handlePaste = useCallback(
+    async (idx: number, e: React.MouseEvent<HTMLButtonElement>) => {
+      // Поле рядом с кнопкой — чтобы сфокусировать его, если буфер недоступен.
+      const input = e.currentTarget.parentElement?.querySelector('input');
+      let raw: string;
+      try {
+        if (!navigator.clipboard?.readText) throw new Error('unsupported');
+        raw = await navigator.clipboard.readText();
+      } catch {
+        // Firefox / небезопасный контекст / отказ в разрешении:
+        // ставим фокус, чтобы пользователь вставил системным способом.
+        input?.focus();
+        showToast(t.pasteFailed);
+        return;
+      }
+      const value = normalizePasted(raw);
+      if (value === '') {
+        showToast(t.pasteEmpty);
+        return;
+      }
+      updatePayment(idx, { number: value });
+    },
+    [showToast, t, updatePayment],
+  );
+
   const handleCopyGenerated = useCallback(async () => {
     if (!genText) return;
     await copyTextToClipboard(genText);
@@ -160,15 +187,25 @@ export default function PaymentForm() {
               </div>
 
               <div className="fields">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={p.number}
-                  placeholder={t.placeholder}
-                  onChange={(e) =>
-                    updatePayment(idx, { number: e.target.value })
-                  }
-                />
+                <div className="field-row">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={p.number}
+                    placeholder={t.placeholder}
+                    onChange={(e) =>
+                      updatePayment(idx, { number: e.target.value })
+                    }
+                  />
+                  <button
+                    type="button"
+                    className="paste-btn"
+                    aria-label={`${t.paste}: ${t.placeholder}`}
+                    onClick={(e) => handlePaste(idx, e)}
+                  >
+                    {t.paste}
+                  </button>
+                </div>
                 <select
                   value={p.bank}
                   className={err?.field === 'bank' ? 'field-error' : ''}

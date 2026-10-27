@@ -36,6 +36,9 @@ export interface Strings {
   totalNote: string;
   cancel: string;
   confirm: string;
+  paste: string;
+  pasteFailed: string;
+  pasteEmpty: string;
 }
 
 export const I18N: Record<Lang, Strings> = {
@@ -78,6 +81,9 @@ export const I18N: Record<Lang, Strings> = {
     totalNote: 'Итого :',
     cancel: 'Отмена',
     confirm: 'Подтвердить',
+    paste: 'Вставить',
+    pasteFailed: 'Нет доступа к буферу — вставьте вручную',
+    pasteEmpty: 'Буфер обмена пуст',
   },
   en: {
     section: (idx) => `Payment ${idx}`,
@@ -112,5 +118,8 @@ export const I18N: Record<Lang, Strings> = {
     totalNote: 'Total (not for client):',
     cancel: 'Cancel',
     confirm: 'Confirm',
+    paste: 'Paste',
+    pasteFailed: 'Clipboard unavailable — paste manually',
+    pasteEmpty: 'Clipboard is empty',
   },
 };

@@ -19,6 +19,8 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* Убираем зум по двойному тапу (iOS Safari игнорирует user-scalable=no). */
+  touch-action: manipulation;
 }
 
 body {
@@ -167,6 +169,36 @@ button {
 .fields select.field-error {
   border-color: var(--danger);
   background: #fff7f7;
+}
+
+/* Поле + маленькая кнопка «Вставить» справа */
+.field-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.field-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.paste-btn {
+  flex: 0 0 auto;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: 10px;
+  border: 1px solid #d0d4d9;
+  background: #f7f8fa;
+  color: var(--accent);
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-appearance: none;
+  appearance: none;
+  transition: background-color 0.15s;
+}
+.paste-btn:active {
+  background: #e3e8ee;
 }
 
 .actions-row {
