@@ -195,6 +195,11 @@ button {
   white-space: nowrap;
   -webkit-appearance: none;
   appearance: none;
+  /* iOS: долгое нажатие не должно выделять текст кнопки и открывать меню
+     «Копировать / Поделиться» — у кнопки только одно действие. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   transition: background-color 0.15s;
 }
 .paste-btn:active {

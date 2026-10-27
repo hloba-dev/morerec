@@ -6,6 +6,7 @@ import { I18N, Lang } from '@/lib/i18n';
 import { generate, FieldError } from '@/lib/generate';
 import { Method, PaymentInput } from '@/lib/types';
 import { normalizePasted } from '@/lib/paste';
+import { isClipboardReadDenied } from '@/lib/clipboard';
 import Modal from './Modal';
 
 const PAYMENTS_COUNT = 4;
@@ -114,19 +115,34 @@ export default function PaymentForm() {
   }, []);
 
   // --- Вставка из буфера в поле номера конкретного платежа ---
+  //
+  // iOS Safari (и любой браузер на iPhone — все они на WebKit) не отдаёт буфер
+  // странице молча: `readText()` показывает системную подсказку «Вставить»
+  // рядом с кнопкой, и текст приходит только после тапа по ней. Обойти это
+  // из JS нельзя — это защита платформы, а не наш код. Поэтому сценарий на
+  // iPhone: тап по кнопке -> тап по подсказке «Вставить».
   const handlePaste = useCallback(
     async (idx: number, e: React.MouseEvent<HTMLButtonElement>) => {
       // Поле рядом с кнопкой — чтобы сфокусировать его, если буфер недоступен.
       const input = e.currentTarget.parentElement?.querySelector('input');
-      let raw: string;
-      try {
-        if (!navigator.clipboard?.readText) throw new Error('unsupported');
-        raw = await navigator.clipboard.readText();
-      } catch {
-        // Firefox / небезопасный контекст / отказ в разрешении:
-        // ставим фокус, чтобы пользователь вставил системным способом.
+      if (!navigator.clipboard?.readText) {
+        // API нет вовсе (http, старый браузер): пусть вставят системным способом.
         input?.focus();
         showToast(t.pasteFailed);
+        return;
+      }
+      let raw: string;
+      try {
+        raw = await navigator.clipboard.readText();
+      } catch {
+        // Отклонено. На iOS/Firefox это значит, что пользователь закрыл
+        // системную подсказку «Вставить» — обычная отмена, молчим и не
+        // выкидываем клавиатуру. В Chrome это может быть запрет навсегда —
+        // тогда подсказываем вставить вручную.
+        if (await isClipboardReadDenied(navigator.permissions)) {
+          input?.focus();
+          showToast(t.pasteFailed);
+        }
         return;
       }
       const value = normalizePasted(raw);
